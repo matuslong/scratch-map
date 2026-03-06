@@ -10,7 +10,7 @@
       :root {
         --bg-1: #fff7f6;
         --bg-2: #fef0ea;
-        --panel: rgba(255, 255, 255, 0.84);
+        --panel: rgba(255, 255, 255, 0.9);
         --text: #4a2b35;
         --muted: #7a5864;
         --base-country: #f0d8d7;
@@ -20,7 +20,13 @@
         --visited-hover: #c14962;
         --planned: #f2b56b;
         --planned-hover: #e39f4e;
+        --wishlist-kobli: #5096f2;
+        --wishlist-kobli-hover: #3f82d8;
+        --wishlist-koblizky: #ff8ec5;
+        --wishlist-koblizky-hover: #eb72af;
         --accent: #7f3c56;
+        --ok: #3f8e5f;
+        --warn: #995c10;
       }
 
       * {
@@ -39,7 +45,7 @@
       }
 
       .app {
-        max-width: 1340px;
+        max-width: 1380px;
         margin: 0 auto;
         padding: 1rem;
       }
@@ -50,14 +56,14 @@
         align-items: end;
         justify-content: space-between;
         gap: 0.9rem;
-        margin-bottom: 0.85rem;
+        margin-bottom: 0.6rem;
       }
 
       h1 {
         margin: 0;
         font-family: "Cormorant Garamond", Georgia, serif;
         font-weight: 700;
-        font-size: clamp(1.6rem, 2.8vw, 2.3rem);
+        font-size: clamp(1.5rem, 2.8vw, 2.3rem);
         letter-spacing: 0.2px;
       }
 
@@ -66,40 +72,66 @@
         color: var(--muted);
       }
 
+      .collab {
+        display: grid;
+        gap: 0.45rem;
+        width: min(100%, 520px);
+        background: var(--panel);
+        border: 1px solid #f0d7da;
+        border-radius: 12px;
+        padding: 0.7rem;
+        box-shadow: 0 8px 20px rgba(110, 45, 69, 0.09);
+      }
+
+      .collab-title {
+        font-weight: 700;
+        color: var(--text);
+      }
+
+      .sync-badge {
+        font-size: 0.86rem;
+        color: var(--muted);
+      }
+
+      .sync-badge.ok {
+        color: var(--ok);
+      }
+
+      .sync-badge.warn {
+        color: var(--warn);
+      }
+
       .stats {
         display: flex;
         flex-wrap: wrap;
-        gap: 0.7rem;
+        gap: 0.55rem;
         color: var(--muted);
         font-weight: 700;
+        margin-bottom: 0.55rem;
       }
 
       .stat {
         display: inline-flex;
         align-items: center;
-        gap: 0.4rem;
+        gap: 0.38rem;
         background: var(--panel);
         border: 1px solid #f0d7da;
         border-radius: 999px;
-        padding: 0.35rem 0.7rem;
+        padding: 0.34rem 0.68rem;
         box-shadow: 0 8px 20px rgba(110, 45, 69, 0.08);
       }
 
       .dot {
-        width: 0.7rem;
-        height: 0.7rem;
+        width: 0.72rem;
+        height: 0.72rem;
         border-radius: 999px;
         display: inline-block;
       }
 
-      .dot.visited {
-        background: var(--visited);
-      }
-
-      .dot.planned {
-        background: var(--planned);
-      }
-
+      .dot.visited { background: var(--visited); }
+      .dot.planned { background: var(--planned); }
+      .dot.wishlist-kobli { background: var(--wishlist-kobli); }
+      .dot.wishlist-koblizky { background: var(--wishlist-koblizky); }
       .dot.unmarked {
         background: var(--base-country);
         border: 1px solid var(--base-border);
@@ -107,6 +139,9 @@
 
       .controls {
         margin-bottom: 0.55rem;
+        display: flex;
+        gap: 0.45rem;
+        flex-wrap: wrap;
       }
 
       .chip {
@@ -115,15 +150,15 @@
         background: #fff;
         color: var(--accent);
         font-weight: 700;
-        padding: 0.45rem 0.85rem;
+        padding: 0.5rem 0.88rem;
         cursor: pointer;
         box-shadow: 0 7px 16px rgba(83, 36, 54, 0.12);
       }
 
       .map-wrap {
         width: 100%;
-        height: min(76vh, 860px);
-        min-height: 450px;
+        height: min(74vh, 860px);
+        min-height: 430px;
         background: var(--panel);
         border: 1px solid #f0d7da;
         border-radius: 18px;
@@ -136,12 +171,14 @@
         width: 100%;
         height: 100%;
         display: block;
+        touch-action: none;
       }
 
       .country {
         fill: var(--base-country);
         stroke: var(--base-border);
-        stroke-width: 0.58;
+        stroke-width: 0.28;
+        vector-effect: non-scaling-stroke;
         cursor: pointer;
         transition: fill 0.18s ease;
       }
@@ -155,22 +192,33 @@
         stroke: #ac3f58;
       }
 
-      .country.status-visited:hover {
-        fill: var(--visited-hover);
-      }
+      .country.status-visited:hover { fill: var(--visited-hover); }
 
       .country.status-planned {
         fill: var(--planned);
         stroke: #be813a;
       }
 
-      .country.status-planned:hover {
-        fill: var(--planned-hover);
+      .country.status-planned:hover { fill: var(--planned-hover); }
+
+      .country.status-wishlistKobli {
+        fill: var(--wishlist-kobli);
+        stroke: #2e6fbe;
       }
+
+      .country.status-wishlistKobli:hover { fill: var(--wishlist-kobli-hover); }
+
+      .country.status-wishlistKoblizky {
+        fill: var(--wishlist-koblizky);
+        stroke: #c2518f;
+      }
+
+      .country.status-wishlistKoblizky:hover { fill: var(--wishlist-koblizky-hover); }
 
       .hint {
         margin-top: 0.75rem;
         color: var(--muted);
+        padding-bottom: 0.4rem;
       }
 
       .modal-backdrop {
@@ -183,7 +231,7 @@
       }
 
       .modal {
-        width: min(440px, 100%);
+        width: min(460px, 100%);
         background: #fff;
         border-radius: 14px;
         padding: 1rem;
@@ -212,8 +260,8 @@
         margin-top: 0.35rem;
         border: 1px solid #e5c8cf;
         border-radius: 10px;
-        padding: 0.55rem 0.6rem;
-        font-size: 0.98rem;
+        padding: 0.65rem 0.7rem;
+        font-size: 1rem;
         color: var(--text);
       }
 
@@ -227,7 +275,7 @@
       button {
         border: none;
         border-radius: 8px;
-        padding: 0.55rem 0.9rem;
+        padding: 0.6rem 0.95rem;
         font-size: 0.95rem;
         cursor: pointer;
         font-weight: 700;
@@ -243,14 +291,65 @@
         color: #fff;
       }
 
-      .hidden {
-        display: none;
+      .hidden { display: none; }
+
+      @media (max-width: 860px) {
+        .topbar {
+          align-items: start;
+        }
+
+        .collab {
+          width: 100%;
+        }
+
+        .map-wrap {
+          min-height: 350px;
+          height: 60vh;
+          border-radius: 14px;
+        }
+
+        .controls {
+          position: sticky;
+          top: 0;
+          z-index: 2;
+          background: linear-gradient(180deg, rgba(254, 240, 234, 0.98) 0%, rgba(254, 240, 234, 0.74) 100%);
+          padding: 0.35rem 0;
+          margin: 0 0 0.5rem 0;
+          backdrop-filter: blur(4px);
+        }
+
+        .chip {
+          min-height: 40px;
+          font-size: 0.95rem;
+        }
       }
 
-      @media (max-width: 720px) {
-        .map-wrap {
-          min-height: 360px;
-          height: 62vh;
+      @media (max-width: 640px) {
+        .country {
+          stroke-width: 0.2;
+        }
+
+        .app {
+          padding: 0.65rem;
+        }
+
+        .modal-backdrop {
+          align-items: end;
+          padding: 0;
+        }
+
+        .modal {
+          width: 100%;
+          border-radius: 16px 16px 0 0;
+          padding-bottom: calc(1rem + env(safe-area-inset-bottom));
+        }
+
+        .modal-actions button {
+          min-height: 42px;
+        }
+
+        .hint {
+          padding-bottom: calc(0.8rem + env(safe-area-inset-bottom));
         }
       }
     </style>
@@ -263,21 +362,33 @@
           <p class="subtitle">Miesta, ktoré sme spolu s Haničkou navštívili, aj tie, ktoré nás ešte čakajú.</p>
         </div>
 
-        <div class="stats">
-          <span class="stat"><span class="dot visited"></span>Navštívené: <strong id="visitedCount">0</strong></span>
-          <span class="stat"><span class="dot planned"></span>V pláne: <strong id="plannedCount">0</strong></span>
-          <span class="stat"><span class="dot unmarked"></span>Celkovo: <strong id="totalCount">0</strong></span>
-        </div>
+        <section class="collab" aria-label="Live zdieľanie mapy">
+          <div class="collab-title">Spoločná live mapa Matúš + Hanička</div>
+          <div class="controls">
+            <button id="syncNowBtn" class="chip" type="button">Synchronizovať teraz</button>
+          </div>
+          <div id="syncBadge" class="sync-badge">Live sync: pripájam...</div>
+        </section>
+      </div>
+
+      <div class="stats">
+        <span class="stat"><span class="dot visited"></span>Navštívené: <strong id="visitedCount">0</strong></span>
+        <span class="stat"><span class="dot planned"></span>Blízka budúcnosť: <strong id="plannedCount">0</strong></span>
+        <span class="stat"><span class="dot wishlist-kobli"></span>Wishlist Kobliho: <strong id="wishlistKobliCount">0</strong></span>
+        <span class="stat"><span class="dot wishlist-koblizky"></span>Wishlist Kobližky: <strong id="wishlistKoblizkyCount">0</strong></span>
+        <span class="stat"><span class="dot unmarked"></span>Celkovo: <strong id="totalCount">0</strong></span>
       </div>
 
       <div class="controls">
+        <button id="zoomOutBtn" class="chip" type="button">- Zoom</button>
+        <button id="zoomInBtn" class="chip" type="button">+ Zoom</button>
         <button id="resetZoomBtn" class="chip" type="button">Resetovať priblíženie</button>
       </div>
 
       <section class="map-wrap" aria-label="Mapa sveta">
         <svg id="map" role="img" aria-label="Zoomovateľná klikateľná mapa všetkých krajín sveta"></svg>
       </section>
-      <p class="hint">Pohyb: podrž a ťahaj. Zoom: kolieskom myši alebo pinch na mobile. Kliknutím na krajinu nastavíš stav.</p>
+      <p class="hint">Pohyb: ťahaním mapy. Zoom: tlačidlá, koliesko myši alebo pinch na mobile. Kliknutím na krajinu nastavíš stav.</p>
     </main>
 
     <div id="modalBackdrop" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
@@ -287,9 +398,11 @@
 
         <label for="statusSelect">Vyber stav krajiny</label>
         <select id="statusSelect">
-          <option value="">Neoznačené</option>
+          <option value="">Nenavštívené</option>
           <option value="visited">Navštívené</option>
-          <option value="planned">V pláne (blízka budúcnosť)</option>
+          <option value="planned">Blízka budúcnosť</option>
+          <option value="wishlistKobli">Wishlist Kobliho</option>
+          <option value="wishlistKoblizky">Wishlist Kobližky</option>
         </select>
 
         <div class="modal-actions">
@@ -300,6 +413,12 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+    <script>
+      window.APP_CONFIG = {
+        supabaseUrl: "",
+        supabaseAnonKey: ""
+      };
+    </script>
     <script src="./app.js" type="module"></script>
   </body>
 </html>

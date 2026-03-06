@@ -1,12 +1,22 @@
-const STORAGE_KEY = "scratch-map-country-status-v2";
+const STORAGE_KEY = "scratch-map-country-status-v3";
+const LEGACY_STORAGE_KEY_V2 = "scratch-map-country-status-v2";
 const LEGACY_VISITED_KEY = "scratch-map-visited-v1";
+
 const DATA_URL = "./data/world.geojson";
 const NAMES_URL = "./data/country-names-sk.json";
+const SHARED_MAP_ID = "matus-hanicka-main";
+
+const SUPABASE_URL = window.APP_CONFIG?.supabaseUrl || "";
+const SUPABASE_ANON_KEY = window.APP_CONFIG?.supabaseAnonKey || "";
 
 const STATUS = {
   VISITED: "visited",
   PLANNED: "planned",
+  WISHLIST_KOBLI: "wishlistKobli",
+  WISHLIST_KOBLIZKY: "wishlistKoblizky",
 };
+
+const VALID_STATUSES = new Set(Object.values(STATUS));
 
 const NAME_OVERRIDES_SK = {
   "Northern Cyprus": "Severný Cyprus",
@@ -26,8 +36,15 @@ const NAME_OVERRIDES_SK = {
 const svg = d3.select("#map");
 const visitedCountEl = document.getElementById("visitedCount");
 const plannedCountEl = document.getElementById("plannedCount");
+const wishlistKobliCountEl = document.getElementById("wishlistKobliCount");
+const wishlistKoblizkyCountEl = document.getElementById("wishlistKoblizkyCount");
 const totalCountEl = document.getElementById("totalCount");
+
+const zoomOutBtn = document.getElementById("zoomOutBtn");
+const zoomInBtn = document.getElementById("zoomInBtn");
 const resetZoomBtn = document.getElementById("resetZoomBtn");
+const syncNowBtn = document.getElementById("syncNowBtn");
+const syncBadge = document.getElementById("syncBadge");
 
 const modalBackdrop = document.getElementById("modalBackdrop");
 const modalTitle = document.getElementById("modalTitle");
@@ -40,42 +57,68 @@ let countryStatuses = loadStatuses();
 let countries = [];
 let countryNamesSk = {};
 let selectedCountry = null;
+
 let zoomBehavior = null;
 let mapLayer = null;
+let lastZoomTransform = d3.zoomIdentity;
+
+let supabase = null;
+let collaborationEnabled = false;
+let realtimeChannel = null;
+let syncTimer = null;
 
 function loadStatuses() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
-        const clean = {};
-        Object.entries(parsed).forEach(([id, value]) => {
-          if (value === STATUS.VISITED || value === STATUS.PLANNED) {
-            clean[id] = value;
-          }
-        });
-        return clean;
-      }
+      return normalizeStatuses(parsed);
     }
   } catch {
-    // fallback to legacy format
+    // ignore
+  }
+
+  try {
+    const rawV2 = localStorage.getItem(LEGACY_STORAGE_KEY_V2);
+    if (rawV2) {
+      const parsedV2 = JSON.parse(rawV2);
+      return normalizeStatuses(parsedV2);
+    }
+  } catch {
+    // ignore
   }
 
   try {
     const legacyRaw = localStorage.getItem(LEGACY_VISITED_KEY);
     const legacy = JSON.parse(legacyRaw || "[]");
     if (!Array.isArray(legacy)) return {};
+
     const migrated = {};
     legacy.forEach((id) => {
       if (typeof id === "string" && id.trim().length) {
         migrated[id] = STATUS.VISITED;
       }
     });
+
     return migrated;
   } catch {
     return {};
   }
+}
+
+function normalizeStatuses(input) {
+  if (!input || typeof input !== "object" || Array.isArray(input)) {
+    return {};
+  }
+
+  const clean = {};
+  Object.entries(input).forEach(([id, value]) => {
+    if (typeof id === "string" && VALID_STATUSES.has(value)) {
+      clean[id] = value;
+    }
+  });
+
+  return clean;
 }
 
 function saveStatuses() {
@@ -100,9 +143,13 @@ function updateCounters() {
   const statuses = Object.values(countryStatuses);
   const visitedCount = statuses.filter((status) => status === STATUS.VISITED).length;
   const plannedCount = statuses.filter((status) => status === STATUS.PLANNED).length;
+  const wishlistKobliCount = statuses.filter((status) => status === STATUS.WISHLIST_KOBLI).length;
+  const wishlistKoblizkyCount = statuses.filter((status) => status === STATUS.WISHLIST_KOBLIZKY).length;
 
   visitedCountEl.textContent = String(visitedCount);
   plannedCountEl.textContent = String(plannedCount);
+  wishlistKobliCountEl.textContent = String(wishlistKobliCount);
+  wishlistKoblizkyCountEl.textContent = String(wishlistKoblizkyCount);
   totalCountEl.textContent = String(countries.length);
 }
 
@@ -115,7 +162,7 @@ function openModal(country) {
   selectedCountry = country;
 
   modalTitle.textContent = country.name;
-  modalText.textContent = "Vyber, či je krajina navštívená, v pláne, alebo ju chceš nechať neoznačenú.";
+  modalText.textContent = "Vyber stav: navštívené, blízka budúcnosť alebo wishlist.";
   statusSelect.value = countryStatuses[country.id] || "";
 
   modalBackdrop.classList.remove("hidden");
@@ -130,19 +177,23 @@ function applyZoom(reset = true) {
 
   zoomBehavior = d3
     .zoom()
-    .scaleExtent([1, 10])
+    .scaleExtent([1, 12])
     .translateExtent([
-      [-width * 0.3, -height * 0.35],
-      [width * 1.3, height * 1.35],
+      [-width * 0.35, -height * 0.4],
+      [width * 1.35, height * 1.4],
     ])
     .on("zoom", (event) => {
+      lastZoomTransform = event.transform;
       mapLayer.attr("transform", event.transform);
     });
 
   svg.call(zoomBehavior);
 
   if (reset) {
+    lastZoomTransform = d3.zoomIdentity;
     svg.call(zoomBehavior.transform, d3.zoomIdentity);
+  } else {
+    svg.call(zoomBehavior.transform, lastZoomTransform);
   }
 }
 
@@ -162,8 +213,8 @@ function renderMap(resetZoom = true) {
   const projection = d3.geoNaturalEarth1();
   projection.fitExtent(
     [
-      [12, 14],
-      [width - 12, height - 12],
+      [14, 14],
+      [width - 14, height - 14],
     ],
     geojson
   );
@@ -185,11 +236,136 @@ function renderMap(resetZoom = true) {
   applyZoom(resetZoom);
 }
 
+function setSyncBadge(text, state = "") {
+  syncBadge.textContent = text;
+  syncBadge.className = `sync-badge${state ? ` ${state}` : ""}`;
+}
+
+function scheduleCloudSync() {
+  if (!collaborationEnabled || !supabase) {
+    return;
+  }
+
+  clearTimeout(syncTimer);
+  syncTimer = setTimeout(() => {
+    syncToCloud();
+  }, 160);
+}
+
+async function syncToCloud() {
+  if (!collaborationEnabled || !supabase) {
+    return;
+  }
+
+  try {
+    const payload = { statuses: countryStatuses };
+    const { error } = await supabase.from("map_rooms").upsert({ room_id: SHARED_MAP_ID, payload });
+    if (error) throw error;
+    setSyncBadge("Live sync: online", "ok");
+  } catch (error) {
+    console.error(error);
+    setSyncBadge("Live sync: chyba synchronizácie", "warn");
+  }
+}
+
+function normalizeRemotePayload(payload) {
+  const remoteStatuses = payload?.statuses;
+  return normalizeStatuses(remoteStatuses);
+}
+
+async function fetchSharedMapFromCloud() {
+  if (!collaborationEnabled || !supabase) {
+    return;
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from("map_rooms")
+      .select("payload")
+      .eq("room_id", SHARED_MAP_ID)
+      .maybeSingle();
+
+    if (error) throw error;
+
+    const remoteStatuses = normalizeRemotePayload(data?.payload);
+    if (Object.keys(remoteStatuses).length > 0) {
+      countryStatuses = remoteStatuses;
+      saveStatuses();
+      updateCounters();
+      renderMap(false);
+    } else {
+      await syncToCloud();
+    }
+  } catch (error) {
+    console.error(error);
+    setSyncBadge("Live sync: načítanie zlyhalo", "warn");
+  }
+}
+
+async function subscribeSharedMapRealtime() {
+  if (!collaborationEnabled || !supabase) {
+    return;
+  }
+
+  if (realtimeChannel) {
+    await supabase.removeChannel(realtimeChannel);
+  }
+
+  realtimeChannel = supabase
+    .channel(`room-${SHARED_MAP_ID}`)
+    .on(
+      "postgres_changes",
+      {
+        event: "*",
+        schema: "public",
+        table: "map_rooms",
+        filter: `room_id=eq.${SHARED_MAP_ID}`,
+      },
+      (payload) => {
+        const remote = normalizeRemotePayload(payload.new?.payload);
+        const remoteJson = JSON.stringify(remote);
+        const localJson = JSON.stringify(countryStatuses);
+        if (remoteJson !== localJson) {
+          countryStatuses = remote;
+          saveStatuses();
+          updateCounters();
+          renderMap(false);
+        }
+        setSyncBadge("Live sync: online", "ok");
+      }
+    )
+    .subscribe((status) => {
+      if (status === "SUBSCRIBED") {
+        setSyncBadge("Live sync: online", "ok");
+      }
+    });
+}
+
+async function initCollaboration() {
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+    setSyncBadge("Live sync: vypnutý (doplň SUPABASE config)", "warn");
+    return;
+  }
+
+  try {
+    const { createClient } = await import("https://esm.sh/@supabase/supabase-js@2");
+    supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    collaborationEnabled = true;
+
+    setSyncBadge("Live sync: pripájam...", "warn");
+    await fetchSharedMapFromCloud();
+    await subscribeSharedMapRealtime();
+  } catch (error) {
+    console.error(error);
+    setSyncBadge("Live sync: chyba inicializácie", "warn");
+  }
+}
+
 function saveSelectedCountryStatus() {
   if (!selectedCountry) return;
 
   const value = statusSelect.value;
-  if (value === STATUS.VISITED || value === STATUS.PLANNED) {
+  if (VALID_STATUSES.has(value)) {
     countryStatuses[selectedCountry.id] = value;
   } else {
     delete countryStatuses[selectedCountry.id];
@@ -198,6 +374,7 @@ function saveSelectedCountryStatus() {
   saveStatuses();
   updateCounters();
   renderMap(false);
+  scheduleCloudSync();
   closeModal();
 }
 
@@ -226,7 +403,6 @@ async function init() {
     })
     .filter((item) => Boolean(item.id));
 
-  // Remove stale IDs that are not present in the current map dataset.
   const validIds = new Set(countries.map((country) => country.id));
   Object.keys(countryStatuses).forEach((id) => {
     if (!validIds.has(id)) {
@@ -237,6 +413,7 @@ async function init() {
   saveStatuses();
   updateCounters();
   renderMap(true);
+  await initCollaboration();
 }
 
 confirmBtn.addEventListener("click", saveSelectedCountryStatus);
@@ -253,10 +430,33 @@ document.addEventListener("keydown", (event) => {
   }
 });
 
+zoomInBtn.addEventListener("click", () => {
+  if (zoomBehavior) {
+    svg.transition().duration(220).call(zoomBehavior.scaleBy, 1.25);
+  }
+});
+
+zoomOutBtn.addEventListener("click", () => {
+  if (zoomBehavior) {
+    svg.transition().duration(220).call(zoomBehavior.scaleBy, 0.8);
+  }
+});
+
 resetZoomBtn.addEventListener("click", () => {
   if (zoomBehavior) {
-    svg.transition().duration(350).call(zoomBehavior.transform, d3.zoomIdentity);
+    lastZoomTransform = d3.zoomIdentity;
+    svg.transition().duration(320).call(zoomBehavior.transform, d3.zoomIdentity);
   }
+});
+
+syncNowBtn.addEventListener("click", async () => {
+  if (!collaborationEnabled) {
+    setSyncBadge("Live sync: vypnutý (doplň SUPABASE config)", "warn");
+    return;
+  }
+
+  await syncToCloud();
+  await fetchSharedMapFromCloud();
 });
 
 let resizeTimer;
