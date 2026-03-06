@@ -5,6 +5,7 @@ const LEGACY_VISITED_KEY = "scratch-map-visited-v1";
 const DATA_URL = "./data/world.geojson";
 const NAMES_URL = "./data/country-names-sk.json";
 const SHARED_MAP_ID = "matus-hanicka-main";
+const FALLBACK_PUBLIC_URL = "https://matuslong.github.io/scratch-map/";
 
 const SUPABASE_URL = window.APP_CONFIG?.supabaseUrl || "";
 const SUPABASE_ANON_KEY = window.APP_CONFIG?.supabaseAnonKey || "";
@@ -44,6 +45,8 @@ const zoomOutBtn = document.getElementById("zoomOutBtn");
 const zoomInBtn = document.getElementById("zoomInBtn");
 const resetZoomBtn = document.getElementById("resetZoomBtn");
 const syncNowBtn = document.getElementById("syncNowBtn");
+const publicUrlInput = document.getElementById("publicUrlInput");
+const copyPublicUrlBtn = document.getElementById("copyPublicUrlBtn");
 const syncBadge = document.getElementById("syncBadge");
 
 const modalBackdrop = document.getElementById("modalBackdrop");
@@ -66,6 +69,26 @@ let supabase = null;
 let collaborationEnabled = false;
 let realtimeChannel = null;
 let syncTimer = null;
+
+function isMobileViewport() {
+  return window.matchMedia("(max-width: 860px)").matches;
+}
+
+function getPublicAppUrl() {
+  const currentUrl = new URL(window.location.href);
+  if (currentUrl.hostname === "localhost" || currentUrl.hostname === "127.0.0.1") {
+    return FALLBACK_PUBLIC_URL;
+  }
+  currentUrl.search = "";
+  currentUrl.hash = "";
+  return currentUrl.toString();
+}
+
+function initializePublicUrl() {
+  if (publicUrlInput) {
+    publicUrlInput.value = getPublicAppUrl();
+  }
+}
 
 function loadStatuses() {
   try {
@@ -175,9 +198,11 @@ function applyZoom(reset = true) {
   const width = container.clientWidth;
   const height = container.clientHeight;
 
+  const maxZoom = isMobileViewport() ? 24 : 14;
+
   zoomBehavior = d3
     .zoom()
-    .scaleExtent([1, 12])
+    .scaleExtent([1, maxZoom])
     .translateExtent([
       [-width * 0.35, -height * 0.4],
       [width * 1.35, height * 1.4],
@@ -413,6 +438,7 @@ async function init() {
   saveStatuses();
   updateCounters();
   renderMap(true);
+  initializePublicUrl();
   await initCollaboration();
 }
 
@@ -432,13 +458,15 @@ document.addEventListener("keydown", (event) => {
 
 zoomInBtn.addEventListener("click", () => {
   if (zoomBehavior) {
-    svg.transition().duration(220).call(zoomBehavior.scaleBy, 1.25);
+    const factor = isMobileViewport() ? 1.35 : 1.25;
+    svg.transition().duration(220).call(zoomBehavior.scaleBy, factor);
   }
 });
 
 zoomOutBtn.addEventListener("click", () => {
   if (zoomBehavior) {
-    svg.transition().duration(220).call(zoomBehavior.scaleBy, 0.8);
+    const factor = isMobileViewport() ? 0.74 : 0.8;
+    svg.transition().duration(220).call(zoomBehavior.scaleBy, factor);
   }
 });
 
@@ -457,6 +485,24 @@ syncNowBtn.addEventListener("click", async () => {
 
   await syncToCloud();
   await fetchSharedMapFromCloud();
+});
+
+copyPublicUrlBtn.addEventListener("click", async () => {
+  const url = getPublicAppUrl();
+  if (publicUrlInput) {
+    publicUrlInput.value = url;
+  }
+
+  try {
+    await navigator.clipboard.writeText(url);
+    setSyncBadge("URL skopírovaná", "ok");
+  } catch {
+    if (publicUrlInput) {
+      publicUrlInput.focus();
+      publicUrlInput.select();
+    }
+    setSyncBadge("Skopíruj URL ručne", "warn");
+  }
 });
 
 let resizeTimer;

@@ -88,6 +88,20 @@
         color: var(--text);
       }
 
+      .share-row {
+        display: flex;
+        gap: 0.45rem;
+      }
+
+      .share-row input {
+        flex: 1;
+        min-width: 0;
+        border: 1px solid #e5c8cf;
+        border-radius: 10px;
+        padding: 0.5rem 0.6rem;
+        font-size: 0.9rem;
+      }
+
       .sync-badge {
         font-size: 0.86rem;
         color: var(--muted);
@@ -219,6 +233,20 @@
         margin-top: 0.75rem;
         color: var(--muted);
         padding-bottom: 0.4rem;
+      }
+
+      .guide {
+        margin-top: 0.8rem;
+        background: var(--panel);
+        border: 1px solid #f0d7da;
+        border-radius: 12px;
+        padding: 0.7rem 0.8rem;
+        color: var(--muted);
+        font-size: 0.93rem;
+      }
+
+      .guide strong {
+        color: var(--text);
       }
 
       .modal-backdrop {
@@ -364,8 +392,12 @@
 
         <section class="collab" aria-label="Live zdieľanie mapy">
           <div class="collab-title">Spoločná live mapa Matúš + Hanička</div>
+          <div class="share-row">
+            <input id="publicUrlInput" type="text" readonly aria-label="Zdieľateľný odkaz aplikácie" />
+            <button id="copyPublicUrlBtn" class="chip" type="button">Kopírovať URL</button>
+          </div>
           <div class="controls">
-            <button id="syncNowBtn" class="chip" type="button">Synchronizovať teraz</button>
+            <button id="syncNowBtn" class="chip" type="button">Uložiť</button>
           </div>
           <div id="syncBadge" class="sync-badge">Live sync: pripájam...</div>
         </section>
@@ -389,6 +421,9 @@
         <svg id="map" role="img" aria-label="Zoomovateľná klikateľná mapa všetkých krajín sveta"></svg>
       </section>
       <p class="hint">Pohyb: ťahaním mapy. Zoom: tlačidlá, koliesko myši alebo pinch na mobile. Kliknutím na krajinu nastavíš stav.</p>
+      <section class="guide" aria-label="Návod">
+        <strong>Návod:</strong> 1) Klikni na krajinu. 2) Vyber kategóriu. 3) Potvrď v okne. 4) Klikni <strong>Uložiť</strong>. Zmena sa zobrazí aj Haničke a každému, kto otvorí tento odkaz.
+      </section>
     </main>
 
     <div id="modalBackdrop" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="modalTitle">

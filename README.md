@@ -22,6 +22,10 @@ Romantická webová aplikácia na spoločnú mapu ciest Matúš + Hanička.
 2. Otvor v prehliadači:
    - `http://localhost:8080`
 
+## Verejná URL na zdieľanie
+- Predvolená produkčná URL: `https://matuslong.github.io/scratch-map/`
+- Túto URL môžeš poslať Haničke alebo komukoľvek inému. Každý uvidí rovnakú mapu a môže ju upraviť.
+
 ## Live sync setup (Supabase)
 App používa jeden fixný záznam mapy: `room_id = 'matus-hanicka-main'`.
 
@@ -66,6 +70,10 @@ with check (true);
 ```
 
 4. Otvor appku na rovnakom odkaze u seba aj u Haničky. Zmeny sa budú synchronizovať realtime.
+
+## GitHub Pages deploy
+- Repo obsahuje workflow pre automatický deploy statickej stránky na GitHub Pages.
+- Po pushi na `main` sa stránka aktualizuje automaticky.
 
 ## Súbory
 - [index.html](C:\dev\scratch-map\index.html) - UI, štýl, mobilné ovládanie
