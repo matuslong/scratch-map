@@ -5,7 +5,6 @@ const LEGACY_VISITED_KEY = "scratch-map-visited-v1";
 const DATA_URL = "./data/world.geojson";
 const NAMES_URL = "./data/country-names-sk.json";
 const SHARED_MAP_ID = "matus-hanicka-main";
-const FALLBACK_PUBLIC_URL = "https://matuslong.github.io/scratch-map/";
 
 const SUPABASE_URL = window.APP_CONFIG?.supabaseUrl || "";
 const SUPABASE_ANON_KEY = window.APP_CONFIG?.supabaseAnonKey || "";
@@ -44,10 +43,7 @@ const totalCountEl = document.getElementById("totalCount");
 const zoomOutBtn = document.getElementById("zoomOutBtn");
 const zoomInBtn = document.getElementById("zoomInBtn");
 const resetZoomBtn = document.getElementById("resetZoomBtn");
-const syncNowBtn = document.getElementById("syncNowBtn");
-const publicUrlInput = document.getElementById("publicUrlInput");
-const copyPublicUrlBtn = document.getElementById("copyPublicUrlBtn");
-const syncBadge = document.getElementById("syncBadge");
+const toastEl = document.getElementById("toast");
 
 const modalBackdrop = document.getElementById("modalBackdrop");
 const modalTitle = document.getElementById("modalTitle");
@@ -68,26 +64,10 @@ let lastZoomTransform = d3.zoomIdentity;
 let supabase = null;
 let collaborationEnabled = false;
 let realtimeChannel = null;
-let syncTimer = null;
+let toastTimer = null;
 
 function isMobileViewport() {
   return window.matchMedia("(max-width: 860px)").matches;
-}
-
-function getPublicAppUrl() {
-  const currentUrl = new URL(window.location.href);
-  if (currentUrl.hostname === "localhost" || currentUrl.hostname === "127.0.0.1") {
-    return FALLBACK_PUBLIC_URL;
-  }
-  currentUrl.search = "";
-  currentUrl.hash = "";
-  return currentUrl.toString();
-}
-
-function initializePublicUrl() {
-  if (publicUrlInput) {
-    publicUrlInput.value = getPublicAppUrl();
-  }
 }
 
 function loadStatuses() {
@@ -261,35 +241,35 @@ function renderMap(resetZoom = true) {
   applyZoom(resetZoom);
 }
 
-function setSyncBadge(text, state = "") {
-  syncBadge.textContent = text;
-  syncBadge.className = `sync-badge${state ? ` ${state}` : ""}`;
-}
+function showToast(text, tone = "ok") {
+  if (!toastEl) return;
 
-function scheduleCloudSync() {
-  if (!collaborationEnabled || !supabase) {
-    return;
+  clearTimeout(toastTimer);
+  toastEl.textContent = text;
+  toastEl.classList.remove("hidden", "warn");
+  if (tone === "warn") {
+    toastEl.classList.add("warn");
   }
-
-  clearTimeout(syncTimer);
-  syncTimer = setTimeout(() => {
-    syncToCloud();
-  }, 160);
+  toastTimer = setTimeout(() => {
+    toastEl.classList.add("hidden");
+  }, 2800);
 }
 
 async function syncToCloud() {
   if (!collaborationEnabled || !supabase) {
-    return;
+    return false;
   }
 
   try {
     const payload = { statuses: countryStatuses };
     const { error } = await supabase.from("map_rooms").upsert({ room_id: SHARED_MAP_ID, payload });
     if (error) throw error;
-    setSyncBadge("Live sync: online", "ok");
+    showToast("Úspešne uložené - koblížci pôjdu na výlet", "ok");
+    return true;
   } catch (error) {
     console.error(error);
-    setSyncBadge("Live sync: chyba synchronizácie", "warn");
+    showToast("Ukladanie zlyhalo. Skús to znova.", "warn");
+    return false;
   }
 }
 
@@ -300,7 +280,7 @@ function normalizeRemotePayload(payload) {
 
 async function fetchSharedMapFromCloud() {
   if (!collaborationEnabled || !supabase) {
-    return;
+    return false;
   }
 
   try {
@@ -318,12 +298,13 @@ async function fetchSharedMapFromCloud() {
       saveStatuses();
       updateCounters();
       renderMap(false);
-    } else {
-      await syncToCloud();
+      return true;
     }
+
+    return false;
   } catch (error) {
     console.error(error);
-    setSyncBadge("Live sync: načítanie zlyhalo", "warn");
+    return false;
   }
 }
 
@@ -356,19 +337,14 @@ async function subscribeSharedMapRealtime() {
           updateCounters();
           renderMap(false);
         }
-        setSyncBadge("Live sync: online", "ok");
       }
     )
-    .subscribe((status) => {
-      if (status === "SUBSCRIBED") {
-        setSyncBadge("Live sync: online", "ok");
-      }
-    });
+    .subscribe();
 }
 
 async function initCollaboration() {
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-    setSyncBadge("Live sync: vypnutý (doplň SUPABASE config)", "warn");
+    collaborationEnabled = false;
     return;
   }
 
@@ -377,16 +353,14 @@ async function initCollaboration() {
     supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     collaborationEnabled = true;
 
-    setSyncBadge("Live sync: pripájam...", "warn");
     await fetchSharedMapFromCloud();
     await subscribeSharedMapRealtime();
   } catch (error) {
     console.error(error);
-    setSyncBadge("Live sync: chyba inicializácie", "warn");
   }
 }
 
-function saveSelectedCountryStatus() {
+async function saveSelectedCountryStatus() {
   if (!selectedCountry) return;
 
   const value = statusSelect.value;
@@ -399,8 +373,13 @@ function saveSelectedCountryStatus() {
   saveStatuses();
   updateCounters();
   renderMap(false);
-  scheduleCloudSync();
   closeModal();
+
+  if (collaborationEnabled) {
+    await syncToCloud();
+  } else {
+    showToast("Zmena uložená len lokálne (cloud nie je nastavený).", "warn");
+  }
 }
 
 async function init() {
@@ -438,7 +417,6 @@ async function init() {
   saveStatuses();
   updateCounters();
   renderMap(true);
-  initializePublicUrl();
   await initCollaboration();
 }
 
@@ -474,34 +452,6 @@ resetZoomBtn.addEventListener("click", () => {
   if (zoomBehavior) {
     lastZoomTransform = d3.zoomIdentity;
     svg.transition().duration(320).call(zoomBehavior.transform, d3.zoomIdentity);
-  }
-});
-
-syncNowBtn.addEventListener("click", async () => {
-  if (!collaborationEnabled) {
-    setSyncBadge("Live sync: vypnutý (doplň SUPABASE config)", "warn");
-    return;
-  }
-
-  await syncToCloud();
-  await fetchSharedMapFromCloud();
-});
-
-copyPublicUrlBtn.addEventListener("click", async () => {
-  const url = getPublicAppUrl();
-  if (publicUrlInput) {
-    publicUrlInput.value = url;
-  }
-
-  try {
-    await navigator.clipboard.writeText(url);
-    setSyncBadge("URL skopírovaná", "ok");
-  } catch {
-    if (publicUrlInput) {
-      publicUrlInput.focus();
-      publicUrlInput.select();
-    }
-    setSyncBadge("Skopíruj URL ručne", "warn");
   }
 });
 

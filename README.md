@@ -14,6 +14,7 @@ Romantická webová aplikácia na spoločnú mapu ciest Matúš + Hanička.
 - Tenšie hranice krajín a lepšia orientácia pri zoome na mobile.
 - Slovenské názvy krajín.
 - Jedna spoločná live verzia mapy (žiadne roomy/verzie v UI).
+- Automatické ukladanie: zmena sa zapíše hneď po potvrdení výberu krajiny.
 
 ## Spustenie
 1. V koreňovom priečinku projektu spusti lokálny server, napr.:
@@ -69,7 +70,8 @@ with check (true);
 </script>
 ```
 
-4. Otvor appku na rovnakom odkaze u seba aj u Haničky. Zmeny sa budú synchronizovať realtime.
+4. Otvor appku na rovnakom odkaze u seba aj u Haničky. Po otvorení sa načíta cloud stav mapy.
+5. Po zmene krajiny klikni v modale `Uložiť zmenu`. Tým sa zmena automaticky zapíše pre všetky zariadenia.
 
 ## GitHub Pages deploy
 - Repo obsahuje workflow pre automatický deploy statickej stránky na GitHub Pages.
