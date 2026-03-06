@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="sk">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Scratch Map</title>
+    <style>
+      :root {
+        --bg: #f4f7f1;
+        --panel: #ffffff;
+        --text: #1f2c1f;
+        --muted: #5e6d5d;
+        --country: #d6ddd0;
+        --country-border: #889684;
+        --visited: #3e8f5f;
+        --visited-hover: #2f764e;
+        --country-hover: #bec9b7;
+        --accent: #2f5f3d;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: "Segoe UI", Tahoma, sans-serif;
+        color: var(--text);
+        background: radial-gradient(circle at 20% 10%, #fdfef9 0%, var(--bg) 60%, #e8eee2 100%);
+      }
+
+      .app {
+        max-width: 1280px;
+        margin: 0 auto;
+        padding: 1rem;
+      }
+
+      .topbar {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        gap: 0.75rem;
+        align-items: center;
+        margin-bottom: 0.75rem;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: clamp(1.2rem, 2vw, 1.6rem);
+      }
+
+      .stats {
+        display: flex;
+        gap: 0.75rem;
+        align-items: center;
+        color: var(--muted);
+        font-weight: 600;
+      }
+
+      .dot {
+        width: 0.75rem;
+        height: 0.75rem;
+        border-radius: 999px;
+        display: inline-block;
+        margin-right: 0.35rem;
+      }
+
+      .dot.visited {
+        background: var(--visited);
+      }
+
+      .dot.unvisited {
+        background: var(--country);
+        border: 1px solid var(--country-border);
+      }
+
+      .map-wrap {
+        width: 100%;
+        height: min(76vh, 860px);
+        min-height: 450px;
+        background: var(--panel);
+        border-radius: 14px;
+        box-shadow: 0 10px 24px rgba(18, 33, 18, 0.11);
+        overflow: hidden;
+      }
+
+      #map {
+        width: 100%;
+        height: 100%;
+        display: block;
+      }
+
+      .country {
+        fill: var(--country);
+        stroke: var(--country-border);
+        stroke-width: 0.6;
+        cursor: pointer;
+        transition: fill 0.2s ease;
+      }
+
+      .country:hover {
+        fill: var(--country-hover);
+      }
+
+      .country.visited {
+        fill: var(--visited);
+      }
+
+      .country.visited:hover {
+        fill: var(--visited-hover);
+      }
+
+      .hint {
+        margin-top: 0.75rem;
+        color: var(--muted);
+      }
+
+      .modal-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(8, 20, 10, 0.45);
+        display: grid;
+        place-items: center;
+        padding: 1rem;
+      }
+
+      .modal {
+        width: min(430px, 100%);
+        background: #fff;
+        border-radius: 12px;
+        padding: 1rem;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+      }
+
+      .modal h2 {
+        margin: 0 0 0.4rem 0;
+        font-size: 1.1rem;
+      }
+
+      .modal p {
+        margin: 0;
+        color: var(--muted);
+      }
+
+      .modal-actions {
+        margin-top: 1rem;
+        display: flex;
+        justify-content: end;
+        gap: 0.5rem;
+      }
+
+      button {
+        border: none;
+        border-radius: 8px;
+        padding: 0.55rem 0.85rem;
+        font-size: 0.95rem;
+        cursor: pointer;
+      }
+
+      button.secondary {
+        background: #e9eee6;
+        color: #344334;
+      }
+
+      button.primary {
+        background: var(--accent);
+        color: #fff;
+      }
+
+      .hidden {
+        display: none;
+      }
+
+      @media (max-width: 720px) {
+        .map-wrap {
+          min-height: 360px;
+          height: 62vh;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="app">
+      <div class="topbar">
+        <h1>Scratch Map: navštívené krajiny</h1>
+        <div class="stats">
+          <span><span class="dot visited"></span>Navštívené: <strong id="visitedCount">0</strong></span>
+          <span><span class="dot unvisited"></span>Celkovo: <strong id="totalCount">0</strong></span>
+        </div>
+      </div>
+
+      <section class="map-wrap" aria-label="Mapa sveta">
+        <svg id="map" role="img" aria-label="Klikateľná mapa všetkých krajín sveta"></svg>
+      </section>
+      <p class="hint">Klikni na krajinu a potvrď, či si ju navštívil/a.</p>
+    </main>
+
+    <div id="modalBackdrop" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <div class="modal">
+        <h2 id="modalTitle"></h2>
+        <p id="modalText"></p>
+        <div class="modal-actions">
+          <button id="cancelBtn" class="secondary" type="button">Zrušiť</button>
+          <button id="confirmBtn" class="primary" type="button">Potvrdiť</button>
+        </div>
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+    <script src="./app.js" type="module"></script>
+  </body>
+</html>
